@@ -1,8 +1,16 @@
+import lynxTypes::*;
+
 package common;
     parameter integer HASH_WIDTH = 256;
     parameter integer LBA_WIDTH = 32;
     parameter integer DATA_NODE_IDX_WIDTH = 32;
     parameter integer NODE_IDX_WIDTH = 32;
+
+    parameter integer PAGE_SIZE = 4096; // in Bytes
+    parameter integer PAGE_BEATS = PAGE_SIZE / (lynxTypes::AXI_DATA_BITS / 8);
+
+    parameter integer COMP_DATA_BITS = 64;
+    parameter integer COMP_CORES = 4;
 
     typedef enum logic[1:0] {WRITE, ERASE, READ, UPDATEHEADER} ssd_op_t;
 
@@ -15,4 +23,6 @@ package common;
         logic[NODE_IDX_WIDTH - 1:0]      node_idx;
         ssd_op_t                         op_code;
     } ssd_instr_t;
+
+    typedef logic[7:0] char_t;
 endpackage

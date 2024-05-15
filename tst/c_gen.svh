@@ -1,6 +1,7 @@
+import common::*;
+
 // AXIS Generator
 class c_gen;
-  
   // Send to driver (mailbox)
   mailbox gen2drv;
 
@@ -31,12 +32,14 @@ class c_gen;
     #(params.delay*CLK_PERIOD);
 
     for(int i = 0; i < params.n_trs; i++) begin
-      trs = new();
-      if(!trs.randomize()) $fatal("ERR:  Generator randomization failed");
-      trs.tlast = i == params.n_trs-1;
-      trs.display("Gen");
-      gen2drv.put(trs);
-    end 
+      for (int j = 0; j < PAGE_BEATS; j++) begin
+        trs = new();
+        if(!trs.randomize()) $fatal("ERR:  Generator randomization failed");
+        trs.tlast = j == PAGE_BEATS - 1;
+        trs.display("Gen");
+        gen2drv.put(trs);
+      end
+    end
     -> done;
   endtask
 

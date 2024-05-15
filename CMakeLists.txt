@@ -8,7 +8,6 @@ find_package(CoyoteHW REQUIRED)
 
 set(N_REGIONS 1)
 set(EN_STRM 1)
-set(N_STRM_AXI 1)
 set(FDEV_NAME u55c)
 
 validation_checks_hw()
