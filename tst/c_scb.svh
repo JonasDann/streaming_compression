@@ -38,12 +38,13 @@ class c_scb;
   task run;
     c_trs trs_mon;
     c_trs trs_drv;
+    int i = 0;
     fail = 0;
     
-    for(int i = 0; i < params.n_trs; i++) begin
-      for(int j = 0; j < PAGE_BEATS; j++) begin
-        drv2scb.get(trs_drv);
-        mon2scb.get(trs_mon);
+    while (i < params.n_trs) begin
+      mon2scb.get(trs_mon);
+      if (trs_mon.tlast) begin
+        i++;
       end
     end
     -> done;
