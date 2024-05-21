@@ -10,7 +10,7 @@ package common;
     parameter integer PAGE_BEATS = PAGE_SIZE / (lynxTypes::AXI_DATA_BITS / 8);
 
     parameter integer COMP_DATA_BITS = 64;
-    parameter integer COMP_CORES = 2;
+    parameter integer COMP_CORES = 4;
 
     typedef enum logic[1:0] {WRITE, ERASE, READ, UPDATEHEADER} ssd_op_t;
 

@@ -110,7 +110,7 @@ s_filling_level_pred <= std_logic_vector(unsigned(s_filling_level) - 1);
 
 s_operation <= i_valid & i_ready; -- someone want to write to fifo || someone is reading from fifo
 
-process(s_write_ptr_succ, s_read_ptr_succ, s_operation, s_empty, s_full, s_read_ptr, s_write_ptr, s_write_after_empty, s_state_read_ptr, s_filling_level) begin
+process(s_write_ptr_succ, s_read_ptr_succ, s_operation, s_empty, s_full, s_read_ptr, s_write_ptr, s_write_after_empty, s_state_read_ptr, s_filling_level, s_filling_level_succ, s_filling_level_pred) begin
 	s_next_write_ptr <= s_write_ptr;
 	
 	s_next_full  <= s_full;

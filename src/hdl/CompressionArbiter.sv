@@ -27,6 +27,7 @@ AXI4S axis_fifo[COMP_CORES]();
 AXI4S axis_gzip[COMP_CORES]();
 
 for (genvar i = 0; i < COMP_CORES; i++) begin
+    assign axis_fifo[i].aclk   = axis_host_recv.aclk;
     assign axis_fifo[i].tdata  = axis_host_recv.tdata;
     assign axis_fifo[i].tkeep  = axis_host_recv.tkeep;
     assign axis_fifo[i].tlast  = axis_host_recv.tlast;
@@ -96,6 +97,7 @@ end
 
 assign axis_host_recv.tready = input_ready;
 
+assign axis_host_send.aclk  = clk;
 assign axis_host_send.tdata = output_data;
 assign axis_host_send.tkeep = output_keep;
 assign axis_host_send.tid   = 0;
