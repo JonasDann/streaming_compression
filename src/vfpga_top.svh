@@ -6,8 +6,8 @@ always_comb cq_rd.tie_off_s();
 always_comb cq_wr.tie_off_s();
 
 CompressionArbiter inst_arbiter (
-    .clk(clk),
-    .rst_n(rst_n),
+    .clk(aclk),
+    .rst_n(aresetn),
     .axis_host_recv(axis_host_recv[0]),
     .axis_host_send(axis_host_send[0])
 );

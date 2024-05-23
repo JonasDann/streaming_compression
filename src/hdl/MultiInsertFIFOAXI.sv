@@ -41,6 +41,4 @@ MultiInsertFIFO #(DEPTH, FIFO_WIDTH, FACTOR) inst_fifo (
     .o_filling_level(filling_level)
 );
 
-assign o_data.aclk = clk;
-
 endmodule

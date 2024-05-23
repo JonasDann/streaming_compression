@@ -67,14 +67,14 @@ s_write_en <= i_valid and (not s_full);
 process (i_clk)
 begin 
 	if rising_edge(i_clk) then
-		if s_rst_n_sync = '0' then
+		-- if s_rst_n_sync = '0' then
 			-- s_memory <= (others => (others => '0')); --not very suitable for M20Ks
-		else 
+		-- else 
 			if (s_write_en = '1') then
 				s_memory(to_integer(unsigned(s_write_ptr))) <= i_data;
 			end if; 
 			o_data <= s_memory(to_integer(unsigned(s_read_ptr)));
-		end if; 
+		-- end if; 
 	end if; 
 end process;  
 

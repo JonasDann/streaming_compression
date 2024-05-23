@@ -46,7 +46,6 @@ gzipcMulticoreStreaming inst_gzip (
     .outStream_TREADY(axis_gzip.tready) 
 );
 
-assign axis_gzip.aclk   = clk;
 assign axis_gzip.tready = axis_o_fifo.tready;
 
 FIFOAXI #(512, AXI_DATA_BITS) inst_output_fifo (
@@ -56,8 +55,6 @@ FIFOAXI #(512, AXI_DATA_BITS) inst_output_fifo (
     .o_data(axis_output),
     .filling_level()
 );
-
-assign axis_o_fifo.aclk = clk;
 
 always_ff @(posedge clk) begin
     if (rst_n == 0) begin
