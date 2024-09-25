@@ -8,6 +8,6 @@ source /opt/sgrt/cli/enable/vivado
 vivado build_hw/sim/test.xpr
 ```
 
-Thereafter, add src/hdl to the simulation sources and start simulation.
+Thereafter, start simulation.
 
 The input generation can be changed in tst/c_gen.svh and assertions may be added to tst/c_scb.svh to check correctness of results.
