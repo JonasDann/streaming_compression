@@ -1,9 +1,0 @@
-build_hw/**
-
-# Generated test files
-input.bin
-
-# Vivado generated files
-*.jou
-*.log
-*.str
