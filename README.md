@@ -1,13 +1,29 @@
-# Compression Core for Storage Deduplication
-This repo belongs to the storage deduplication in https://github.com/fpgasystems/dedup and implements an arbiter for a GZip compression core to be able to compress multiple pages in parallel.
+# FPGA-accelerated Database Operators as a Service
 
-Simulation:
-```Bash
+This repo contains the contents of the practical work on "FPGA-accelerated Database Operators as a Service".
+
+It extends the [Coyote](https://github.com/fpgasystems/Coyote) framework with custom verification infrastructure
+with Python. To simulate the operators, do the following:
+
+
+1. Generate input via
+
+```console
+python3 scripts/run_test.py --generate
+```
+
+2. Run the simulation
+
+```console
 source /opt/sgrt/cli/enable/vivado
 ./sim_setup.sh
 vivado build_hw/sim/test.xpr
 ```
 
-Thereafter, start simulation.
+In vivado, click on "Run Simulation" on the left and then run the simulation for the specified time.
 
-The input generation can be changed in tst/c_gen.svh and assertions may be added to tst/c_scb.svh to check correctness of results.
+The simultation will create a output file at ```tst/output.txt```. This file can be verified as follows:
+
+```console
+python3 scripts/run_test.py --verifiy
+```

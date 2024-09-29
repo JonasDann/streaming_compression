@@ -1,7 +1,7 @@
 
 // AXIS monitor
 class c_mon;
-  
+
   // Interface handle
   virtual AXI4SR axis;
 
