@@ -54,7 +54,6 @@ class c_drv;
       axis.tdata  <= #TA trs.tdata;   
       axis.tkeep  <= #TA ~0;
       axis.tlast  <= #TA trs.tlast;
-      $display("Set last value to: %d", trs.tlast);
       axis.tid    <= #TA trs.tid;
       axis.tvalid <= #TA 1'b1;
       cycle_start();

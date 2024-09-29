@@ -1,10 +1,7 @@
 build_hw/**
 
 # Generated test files
-tst/input.bin
-tst/output.txt
-scripts/actual.txt
-scripts/expected.txt
+input.bin
 
 # Vivado generated files
 *.jou

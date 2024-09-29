@@ -39,7 +39,6 @@ class c_gen;
     integer gen_file_length;
     integer path_length;
     string path_sub_string;
-    integer chunk_id;
     string source_file;
     #(params.delay*CLK_PERIOD);
 
@@ -61,7 +60,6 @@ class c_gen;
     num_bytes_read = $fread(buffer, fd, 64);
 
     // Read 512-byte chunks from the binary file
-    chunk_id = 0;
     while (!$feof(fd)) begin
       trs = new();
 
@@ -75,10 +73,8 @@ class c_gen;
       num_bytes_read = $fread(next_buffer, fd, 64);
       trs.tdata = buffer;
       trs.tlast = num_bytes_read == 0;
-      trs.tid = chunk_id;
       gen2drv.put(trs);
       trs.display("Gen");
-      chunk_id++;
 
       //Save next_buffer for next iteration
       buffer = next_buffer;

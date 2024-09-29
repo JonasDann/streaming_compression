@@ -40,12 +40,12 @@ always_comb cq_wr.tie_off_s();
 
 /* -- USER LOGIC -------------------------------------------------------- */
 
-not_gate inst_not_gate (
-    .axis_host_recv   (axis_host_recv[0]),
-    .axis_host_send   (axis_host_send[0]),
-
-    .clk              (aclk),
-    .rst_n            (aresetn)
+CompressionArbiter inst_arbiter (
+    .clk(aclk),
+    .rst_n(aresetn),
+    .axis_host_recv(axis_host_recv[0]),
+    .axis_host_send(axis_host_send[0])
 );
+
 endmodule
 
