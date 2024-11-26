@@ -2,7 +2,7 @@
 
 module FIFOAXI #(
     parameter DEPTH,
-    parameter DATA_WIDTH
+    parameter DATA_WIDTH = 512
 ) (
     input logic clk,
     input logic rst_n,

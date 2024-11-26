@@ -6,8 +6,9 @@ package common;
     parameter integer DATA_NODE_IDX_WIDTH = 32;
     parameter integer NODE_IDX_WIDTH = 32;
 
-    parameter integer PAGE_SIZE = 4096; // in Bytes
-    parameter integer PAGE_BEATS = PAGE_SIZE / (lynxTypes::AXI_DATA_BITS / 8);
+    parameter integer PAGE_SIZE = 8192; // in Bytes
+    parameter integer PAGE_SIZE_WIDTH = $clog2(PAGE_SIZE) + 1;
+    parameter integer PAGE_BEATS = PAGE_SIZE / (lynxTypes::AXI_DATA_BITS / 8);    
 
     parameter integer COMP_DATA_BITS = 64;
     parameter integer COMP_CORES = 4;
@@ -25,4 +26,5 @@ package common;
     } ssd_instr_t;
 
     typedef logic[7:0] char_t;
+    typedef logic[PAGE_SIZE_WIDTH - 1:0] page_size_t;
 endpackage
