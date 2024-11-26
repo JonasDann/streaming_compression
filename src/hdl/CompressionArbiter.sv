@@ -3,9 +3,7 @@
 import lynxTypes::*;
 import common::*;
 
-module CompressionArbiter #(
-    parameter ADD_LENGTH_HEADER
-) (
+module CompressionArbiter (
     input logic clk,
     input logic rst_n,
 
@@ -19,6 +17,7 @@ char_t input_counter;
 logic[COMP_CORES - 1:0] input_valid, input_ready_all;
 logic input_ready;
 page_size_t curr_input_size, next_curr_input_size;
+logic curr_input_size_valid;
 logic flush_input;
 
 char_t gzip_counter;
@@ -26,9 +25,13 @@ logic[AXI_DATA_BITS - 1:0] gzip_data_all[COMP_CORES];
 logic[AXI_DATA_BITS / 8 - 1:0] gzip_keep_all[COMP_CORES];
 logic[COMP_CORES - 1:0] gzip_last_all, gzip_valid_all, gzip_ready_all;
 page_size_t uncom_size, com_size, next_com_size;
+logic com_size_valid;
 
 typedef enum logic[1:0] {HEADER, BODY} ostate_t;
 ostate_t output_state;
+page_size_t h_com_size;
+logic h_com_size_valid;
+logic header_ready;
 
 AXI4S axis_fifo[COMP_CORES]();
 AXI4S axis_gzip_all[COMP_CORES]();
@@ -46,7 +49,7 @@ for (genvar i = 0; i < COMP_CORES; i++) begin
         .clk(clk),
         .rst_n(rst_n),
         .axis_input(axis_fifo[i]),
-        .axis_output(axis_gzip[i])
+        .axis_output(axis_gzip_all[i])
     );
 
     assign gzip_data_all[i]  = axis_gzip_all[i].tdata;
@@ -61,24 +64,24 @@ FIFO #(2 * COMP_CORES, PAGE_SIZE_WIDTH) inst_uncom_size_fifo (
     .i_rst_n(rst_n),
 
     .i_data(curr_input_size),
-    .i_data_valid(curr_input_size_valid),
-    .o_data_ready(),
+    .i_valid(curr_input_size_valid),
+    .o_ready(),
 
     .o_data(uncom_size),
-    .o_data_valid(uncom_size_valid),
-    .i_data_ready(header_ready),
+    .o_valid(uncom_size_valid),
+    .i_ready(header_ready),
 
     .o_filling_level()
 );
 
 FIFOAXI #(2 * (PAGE_SIZE / 64)) inst_fifo (
-    .i_clk(clk),
-    .i_rst_n(rst_n),
+    .clk(clk),
+    .rst_n(rst_n),
 
     .i_data(axis_gzip),
     .o_data(axis_counted),
 
-    .o_filling_level()
+    .filling_level()
 );
 
 FIFO #(2, PAGE_SIZE_WIDTH) inst_com_size_fifo (
@@ -86,12 +89,12 @@ FIFO #(2, PAGE_SIZE_WIDTH) inst_com_size_fifo (
     .i_rst_n(rst_n),
 
     .i_data(com_size),
-    .i_data_valid(com_size_valid),
-    .o_data_ready(),
+    .i_valid(com_size_valid),
+    .o_ready(),
 
     .o_data(h_com_size),
-    .o_data_valid(h_com_size_valid),
-    .i_data_ready(header_ready),
+    .o_valid(h_com_size_valid),
+    .i_ready(header_ready),
 
     .o_filling_level()
 );
@@ -186,7 +189,7 @@ end
 ////
 always_ff @(posedge clk) begin
     if (rst_n == 0) begin
-        output_state <= IDLE;
+        output_state <= HEADER;
     end else begin
         case (output_state)
             HEADER: begin
@@ -208,6 +211,6 @@ assign axis_host_send.tdata  = output_state == HEADER ? {uncom_size, h_com_size}
 assign axis_host_send.tkeep  = output_state == HEADER ? HEADER_SIZE / 8 - 1 : axis_counted.tkeep;
 assign axis_host_send.tid    = 0;
 assign axis_host_send.tlast  = output_state == HEADER ? 0 : axis_counted.tlast;
-assign axis_host_send.tvalid = output_state == HEADER ? h_com_size_valid : output_state == IDLE ? 0 : axis_counted.tlast;
+assign axis_host_send.tvalid = output_state == HEADER ? h_com_size_valid : axis_counted.tlast;
 
 endmodule
