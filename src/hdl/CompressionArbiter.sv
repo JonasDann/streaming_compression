@@ -4,11 +4,11 @@ import lynxTypes::*;
 import common::*;
 
 module CompressionArbiter (
-    input logic clk,
-    input logic rst_n,
+    input logic aclk,
+    input logic aresetn,
 
     AXI4SR.s axis_host_recv,
-    AXI4SR.m axis_host_send
+    AXI4S.m axis_host_send
 );
 
 parameter HEADER_SIZE = 32;
@@ -46,8 +46,8 @@ for (genvar i = 0; i < COMP_CORES; i++) begin
     assign input_ready_all[i] = axis_fifo[i].tready;
 
     GzipWrapper inst_gzip (
-        .clk(clk),
-        .rst_n(rst_n),
+        .clk(aclk),
+        .rst_n(aresetn),
         .axis_input(axis_fifo[i]),
         .axis_output(axis_gzip_all[i])
     );
@@ -59,9 +59,9 @@ for (genvar i = 0; i < COMP_CORES; i++) begin
     assign axis_gzip_all[i].tready = gzip_ready_all[i];
 end
 
-FIFO #(2 * COMP_CORES, PAGE_SIZE_WIDTH) inst_uncom_size_fifo (
-    .i_clk(clk),
-    .i_rst_n(rst_n),
+FIFO #(.DEPTH(2 * COMP_CORES), .WIDTH(PAGE_SIZE_WIDTH)) inst_uncom_size_fifo (
+    .i_clk(aclk),
+    .i_rst_n(aresetn),
 
     .i_data(curr_input_size),
     .i_valid(curr_input_size_valid),
@@ -74,9 +74,9 @@ FIFO #(2 * COMP_CORES, PAGE_SIZE_WIDTH) inst_uncom_size_fifo (
     .o_filling_level()
 );
 
-FIFOAXI #(2 * (PAGE_SIZE / 64)) inst_fifo (
-    .clk(clk),
-    .rst_n(rst_n),
+FIFOAXI #(.DEPTH(2 * (PAGE_SIZE / 64))) inst_fifo (
+    .clk(aclk),
+    .rst_n(aresetn),
 
     .i_data(axis_gzip),
     .o_data(axis_counted),
@@ -84,9 +84,9 @@ FIFOAXI #(2 * (PAGE_SIZE / 64)) inst_fifo (
     .filling_level()
 );
 
-FIFO #(2, PAGE_SIZE_WIDTH) inst_com_size_fifo (
-    .i_clk(clk),
-    .i_rst_n(rst_n),
+FIFO #(.DEPTH(2), .WIDTH(PAGE_SIZE_WIDTH)) inst_com_size_fifo (
+    .i_clk(aclk),
+    .i_rst_n(aresetn),
 
     .i_data(com_size),
     .i_valid(com_size_valid),
@@ -102,8 +102,8 @@ FIFO #(2, PAGE_SIZE_WIDTH) inst_com_size_fifo (
 ////
 // Input
 ////
-always_ff @(posedge clk) begin
-    if (rst_n == 0) begin
+always_ff @(posedge aclk) begin
+    if (aresetn == 0) begin
         curr_input_size <= 0;
         input_counter  <= 0;
     end else begin
@@ -146,8 +146,8 @@ assign axis_host_recv.tready = input_ready;
 ////
 // Gzip
 ////
-always_ff @(posedge clk) begin
-    if (rst_n == 0) begin
+always_ff @(posedge aclk) begin
+    if (aresetn == 0) begin
         gzip_counter <= 0;
     end else begin
         com_size_valid <= 0;
@@ -187,8 +187,8 @@ end
 ////
 // Output
 ////
-always_ff @(posedge clk) begin
-    if (rst_n == 0) begin
+always_ff @(posedge aclk) begin
+    if (aresetn == 0) begin
         output_state <= HEADER;
     end else begin
         case (output_state)

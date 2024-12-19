@@ -1,98 +1,45 @@
+`include "axi_macros.svh"
+
 module BarrelShifter #(
     parameter WIDTH = 512,
     parameter REGISTER_LEVELS = 0,
+    parameter BYTES = WIDTH / 8,
+    parameter OFFSET_WIDTH = $clog2(BYTES) + 1
 ) (
     input logic aclk,
     input logic aresetn,
 
-    input logic enable,
+    input logic[OFFSET_WIDTH - 1:0] i_offset, // TODO
 
-    input logic [511:0] data_in,
-    input logic [63:0] keep_in,
-    input logic valid_in,
-    input logic last_in,
-    input logic last_transfer_flag_in,
-
-    output logic [511:0] data_out,
-    output logic [63:0] keep_out,
-    output logic valid_out,
-    output logic last_out,
-    output logic last_transfer_flag_out,
-
-    output logic [6:0] offset_out
+    AXI4S.s i_data,
+    AXI4S.m o_data
 );
-    localparam int PipelineStages = 7;
 
-    // pipeline logic
-    logic [511:0] pipeline_data[PipelineStages];
-    logic [63:0] pipeline_keep[PipelineStages];
-    logic [6:0] pipeline_offset[PipelineStages];
-    logic pipeline_last_transfer[PipelineStages];
-    logic pipeline_last[PipelineStages];
-    logic pipeline_valid[PipelineStages];
+localparam int PIPELINE_STAGES = $clog2(BYTES) + 1;
+localparam int REGISTER_GAP = (REGISTER_LEVELS == 0 ? PIPELINE_STAGES + 1 : PIPELINE_STAGES / REGISTER_LEVELS);
 
-    // instantiate bit counter
-    // Note that it takes a clock cycle for the offset to read pipeline_offset[0]
-    keep_bit_counter_64 bit_counter_inst(
+AXI4S axis_stages[PIPELINE_STAGES]();
+logic[OFFSET_WIDTH - 1:0] offset_stages[PIPELINE_STAGES];
+
+// Input assignments
+`AXIS_ASSIGN(axis_stages[0], i_data)
+assign offset_stages[0] = $countones(i_data.tkeep);
+
+// Generate pipeline stages
+for (genvar i = 0; i < PIPELINE_STAGES - 1; i++) begin
+    ConstantShifter #(.SHIFT(i), .WIDTH(WIDTH), .REGISTER((i % REGISTER_GAP) == 0)) inst_shifter (
         .aclk(aclk),
         .aresetn(aresetn),
-        .keep(keep_in),
-        .valid(valid_in & enable),
-        .bit_counter(pipeline_offset[0])
+
+        .i_data(axis_stages[i]),
+        .i_offset(offset_stages[i]),
+
+        .o_data(axis_stages[i + 1]),
+        .o_offset(offset_stages[i + 1])
     );
+end
 
-    // pipeline stages
-    generate
-        for (genvar i = 0; i < PipelineStages-1; i++) begin: gen_pipeline_stages
-            ConstantShifter #(.WIDTH(WIDTH), .REGISTER(), .SHIFT(i)) inst_shifter (
-                .aclk(aclk),
-                .aresetn(aresetn),
-                .enable(enable),
+// Iutput assignments
+`AXIS_ASSIGN(o_data, axis_stages[PIPELINE_STAGES - 1])
 
-                .data_in(pipeline_data[i]),
-                .keep_in(pipeline_keep[i]),
-                .offset_in(pipeline_offset[i]),
-                .valid_in(pipeline_valid[i]),
-                .last_in(pipeline_last[i]),
-                .last_transfer_flag_in(pipeline_last_transfer[i]),
-
-                .data_out(pipeline_data[i+1]),
-                .keep_out(pipeline_keep[i+1]),
-                .offset_out(pipeline_offset[i+1]),
-                .valid_out(pipeline_valid[i+1]),
-                .last_out(pipeline_last[i+1]),
-                .last_transfer_flag_out(pipeline_last_transfer[i+1])
-            );
-        end
-    endgenerate
-
-    // output assignments
-    assign data_out = pipeline_data[PipelineStages-1];
-    assign keep_out = pipeline_keep[PipelineStages-1];
-    assign valid_out = pipeline_valid[PipelineStages-1];
-    assign last_out = pipeline_last[PipelineStages-1];
-    assign last_transfer_flag_out = pipeline_last_transfer[PipelineStages-1];
-    assign offset_out = pipeline_offset[PipelineStages-1];
-
-    // move the inputs the the first pipeline stage
-    always_ff @(posedge aclk) begin
-        if (~aresetn) begin
-            // reset the first pipeline stage
-            // other stages are reset by their constant shifters
-            pipeline_data[0] <= 0;
-            pipeline_keep[0] <= 0;
-            pipeline_last[0] <= 0;
-            pipeline_last_transfer[0] <= 0;
-            pipeline_valid[0] <= 0;
-        end
-        else begin
-            if (enable) begin
-                pipeline_data[0] <= data_in;
-                pipeline_keep[0] <= keep_in;
-                pipeline_last[0] <= last_in;
-                pipeline_last_transfer[0] <= last_transfer_flag_in;
-                pipeline_valid[0] <= valid_in;
-            end
-        end
-    end
 endmodule

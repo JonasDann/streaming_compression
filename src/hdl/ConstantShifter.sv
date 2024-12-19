@@ -1,65 +1,55 @@
 module ConstantShifter #(
+    parameter SHIFT_INDEX,
     parameter WIDTH = 512,
     parameter REGISTER = 0,
-    parameter SHIFT = 0
+    parameter BYTES = WIDTH / 8,
+    parameter OFFSET_WIDTH = $clog2(BYTES) + 1
 ) (
     input logic aclk,
     input logic aresetn,
-    input logic enable,
 
-    input logic [511:0] data_in,
-    input logic [63:0] keep_in,
-    input logic [6:0] offset_in,
-    input logic valid_in,
-    input logic last_in,
-    input logic last_transfer_flag_in,
+    AXI4S.s                   i_data,
+    logic[OFFSET_WIDTH - 1:0] i_offset;
 
-    output logic [511:0] data_out,
-    output logic [63:0] keep_out,
-    output logic [6:0] offset_out,
-    output logic valid_out,
-    output logic last_out,
-    output logic last_transfer_flag_out
+    AXI4S.m                   o_data
+    logic[OFFSET_WIDTH - 1:0] o_offset;
 );
 
-    // calculate the shift amount from the bit index
-    localparam int DataShiftAmount = 32'd8 << ShiftAmountBitIndex;
-    localparam int KeepShiftAmount = 32'd1 << ShiftAmountBitIndex;
+// Calculate the shift amount from the bit index
+localparam int DATA_SHIFT = 32'd8 << SHIFT_INDEX;
+localparam int KEEP_SHIFT = 32'd1 << SHIFT_INDEX;
 
-    logic [6:0] offset;
-    assign offset_out = offset;
+logic[WIDTH - 1:0] data_shifted;
+logic[BYTES - 1:0] keep_shifted;
 
+always_comb begin
+    if (i_offset[SHIFT_INDEX] == 1'b1) begin
+        data_shifted <= {i_data.tdata[WIDTH - DATA_SHIFT - 1:0], data_in[WIDTH - 1:WIDTH - DATA_SHIFT]};
+        keep_shifted <= {i_data.tkeep[BYTES - KEEP_SHIFT - 1:0], keep_in[BYTES - 1:BYTES - KEEP_SHIFT]};
+    end else begin
+        data_shifted <= i_data.tdata;
+        keep_shifted <= i_data.tkeep;
+    end
+end
+
+generate if (REGISTER == 1) begin
     always_ff @(posedge aclk) begin
-        // check for reset
-        if (~aresetn) begin
-            data_out <= 0;
-            keep_out <= 0;
-            valid_out <= 0;
-            last_out <= 0;
-            last_transfer_flag_out <= 0;
-            offset <= 0;
-        end
-        else begin
-            if (enable) begin
-                // check if corresponding bit is set
-                if (offset[ShiftAmountBitIndex]) begin
-                    // bit is set, so shift
-                    data_out <= {data_in[511-DataShiftAmount:0], data_in[511:512-DataShiftAmount]};
-                    keep_out <= {keep_in[63-KeepShiftAmount:0], keep_in[63:64-KeepShiftAmount]};
-                end
-                else begin
-                    // bit is not set, so don't shift
-                    data_out <= data_in;
-                    keep_out <= keep_in;
-                end
-
-                // unconditional assignments
-                offset <= offset_in;
-                valid_out <= valid_in;
-                last_out <= last_in;
-                last_transfer_flag_out <= last_transfer_flag_in;
-            end
+        if (~aresetn == 1'b1) begin
+            o_data.tvalid <= 1'b0;
+        end else begin
+            o_data.tdata  <= data_shifted;
+            o_data.tkeep  <= keep_shifted;
+            o_data.tlast  <= i_data.tlast;
+            o_data.tvalid <= i_data.tvalid;
         end
     end
+end else begin
+    o_data.tdata  <= data_shifted;
+    o_data.tkeep  <= keep_shifted;
+    o_data.tlast  <= i_data.tlast;
+    o_data.tvalid <= i_data.tvalid;
+end endgenerate
+
+i_data.tready <= o_data.tready;
 
 endmodule
