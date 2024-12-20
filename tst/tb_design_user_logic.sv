@@ -40,9 +40,9 @@ always_comb cq_wr.tie_off_s();
 
 /* -- USER LOGIC -------------------------------------------------------- */
 
-CompressionArbiter inst_arbiter (
-    .clk(aclk),
-    .rst_n(aresetn),
+Top top (
+    .aclk(aclk),
+    .aresetn(aresetn),
     .axis_host_recv(axis_host_recv[0]),
     .axis_host_send(axis_host_send[0])
 );

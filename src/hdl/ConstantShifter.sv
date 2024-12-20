@@ -1,3 +1,5 @@
+import lynxTypes::*;
+
 module ConstantShifter #(
     parameter SHIFT_INDEX,
     parameter WIDTH = 512,
@@ -9,10 +11,10 @@ module ConstantShifter #(
     input logic aresetn,
 
     AXI4S.s                   i_data,
-    logic[OFFSET_WIDTH - 1:0] i_offset;
+    logic[OFFSET_WIDTH - 1:0] i_offset,
 
-    AXI4S.m                   o_data
-    logic[OFFSET_WIDTH - 1:0] o_offset;
+    AXI4S.m                   o_data,
+    logic[OFFSET_WIDTH - 1:0] o_offset
 );
 
 // Calculate the shift amount from the bit index
@@ -24,8 +26,8 @@ logic[BYTES - 1:0] keep_shifted;
 
 always_comb begin
     if (i_offset[SHIFT_INDEX] == 1'b1) begin
-        data_shifted <= {i_data.tdata[WIDTH - DATA_SHIFT - 1:0], data_in[WIDTH - 1:WIDTH - DATA_SHIFT]};
-        keep_shifted <= {i_data.tkeep[BYTES - KEEP_SHIFT - 1:0], keep_in[BYTES - 1:BYTES - KEEP_SHIFT]};
+        data_shifted <= {i_data.tdata[WIDTH - DATA_SHIFT - 1:0], i_data.tdata[WIDTH - 1:WIDTH - DATA_SHIFT]};
+        keep_shifted <= {i_data.tkeep[BYTES - KEEP_SHIFT - 1:0], i_data.tkeep[BYTES - 1:BYTES - KEEP_SHIFT]};
     end else begin
         data_shifted <= i_data.tdata;
         keep_shifted <= i_data.tkeep;
@@ -44,12 +46,12 @@ generate if (REGISTER == 1) begin
         end
     end
 end else begin
-    o_data.tdata  <= data_shifted;
-    o_data.tkeep  <= keep_shifted;
-    o_data.tlast  <= i_data.tlast;
-    o_data.tvalid <= i_data.tvalid;
+    assign o_data.tdata  = data_shifted;
+    assign o_data.tkeep  = keep_shifted;
+    assign o_data.tlast  = i_data.tlast;
+    assign o_data.tvalid = i_data.tvalid;
 end endgenerate
 
-i_data.tready <= o_data.tready;
+assign i_data.tready = o_data.tready;
 
 endmodule

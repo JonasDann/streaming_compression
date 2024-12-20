@@ -1,3 +1,5 @@
+import lynxTypes::*;
+
 `include "axi_macros.svh"
 
 module BarrelShifter #(
@@ -9,7 +11,7 @@ module BarrelShifter #(
     input logic aclk,
     input logic aresetn,
 
-    input logic[OFFSET_WIDTH - 1:0] i_offset, // TODO
+    input logic[OFFSET_WIDTH - 1:0] i_offset,
 
     AXI4S.s i_data,
     AXI4S.m o_data
@@ -23,11 +25,11 @@ logic[OFFSET_WIDTH - 1:0] offset_stages[PIPELINE_STAGES];
 
 // Input assignments
 `AXIS_ASSIGN(axis_stages[0], i_data)
-assign offset_stages[0] = $countones(i_data.tkeep);
+assign offset_stages[0] = i_offset;
 
 // Generate pipeline stages
 for (genvar i = 0; i < PIPELINE_STAGES - 1; i++) begin
-    ConstantShifter #(.SHIFT(i), .WIDTH(WIDTH), .REGISTER((i % REGISTER_GAP) == 0)) inst_shifter (
+    ConstantShifter #(.SHIFT_INDEX(i), .WIDTH(WIDTH), .REGISTER((i % REGISTER_GAP) == 0)) inst_shifter (
         .aclk(aclk),
         .aresetn(aresetn),
 

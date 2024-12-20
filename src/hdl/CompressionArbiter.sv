@@ -7,8 +7,8 @@ module CompressionArbiter (
     input logic aclk,
     input logic aresetn,
 
-    AXI4SR.s axis_host_recv,
-    AXI4S.m axis_host_send
+    AXI4SR.s i_data,
+    AXI4S.m  o_data
 );
 
 parameter HEADER_SIZE = 32;
@@ -39,9 +39,9 @@ AXI4S axis_gzip();
 AXI4S axis_counted();
 
 for (genvar i = 0; i < COMP_CORES; i++) begin
-    assign axis_fifo[i].tdata  = axis_host_recv.tdata;
-    assign axis_fifo[i].tkeep  = axis_host_recv.tkeep;
-    assign axis_fifo[i].tlast  = axis_host_recv.tlast;
+    assign axis_fifo[i].tdata  = i_data.tdata;
+    assign axis_fifo[i].tkeep  = i_data.tkeep;
+    assign axis_fifo[i].tlast  = i_data.tlast;
     assign axis_fifo[i].tvalid = input_valid[i];
     assign input_ready_all[i] = axis_fifo[i].tready;
 
@@ -126,8 +126,8 @@ always_comb begin
     input_valid <= 0;
     input_ready <= 0;
 
-    flush_input <= ((axis_host_recv.tlast || curr_input_size == PAGE_SIZE) && axis_host_recv.tvalid && input_ready) ? 1 : 0; // curr_input_size can never be > PAGE_SIZE because of normalized stream
-    next_curr_input_size <= curr_input_size + $countones(axis_host_recv.tkeep);
+    flush_input <= ((i_data.tlast || curr_input_size == PAGE_SIZE) && i_data.tvalid && input_ready) ? 1 : 0; // curr_input_size can never be > PAGE_SIZE because of normalized stream
+    next_curr_input_size <= curr_input_size + $countones(i_data.tkeep);
 
     if (flush_input) begin
         curr_input_size_valid <= 1;
@@ -135,13 +135,13 @@ always_comb begin
 
     for (int i = 0; i < COMP_CORES; i++) begin
         if (input_counter == i) begin
-            input_valid[i] <= axis_host_recv.tvalid;
+            input_valid[i] <= i_data.tvalid;
             input_ready <= input_ready_all[i];
         end
     end
 end
 
-assign axis_host_recv.tready = input_ready;
+assign i_data.tready = input_ready;
 
 ////
 // Gzip
@@ -193,24 +193,23 @@ always_ff @(posedge aclk) begin
     end else begin
         case (output_state)
             HEADER: begin
-                if (h_com_size_valid && axis_host_send.tready) begin
+                if (h_com_size_valid && o_data.tready) begin
                     output_state <= BODY;
                 end end
             BODY: begin
-                if (axis_host_send.tready && axis_counted.tvalid && axis_counted.tlast) begin
+                if (o_data.tready && axis_counted.tvalid && axis_counted.tlast) begin
                     output_state <= HEADER;
                 end end
         endcase
     end
 end
 
-assign axis_counted.tready = output_state == BODY ? axis_host_send.tready : 0;
-assign header_ready = output_state == HEADER ? axis_host_send.tready : 0;
+assign axis_counted.tready = output_state == BODY ? o_data.tready : 0;
+assign header_ready = output_state == HEADER ? o_data.tready : 0;
 
-assign axis_host_send.tdata  = output_state == HEADER ? {uncom_size, h_com_size} : axis_counted.tdata;
-assign axis_host_send.tkeep  = output_state == HEADER ? HEADER_SIZE / 8 - 1 : axis_counted.tkeep;
-assign axis_host_send.tid    = 0;
-assign axis_host_send.tlast  = output_state == HEADER ? 0 : axis_counted.tlast;
-assign axis_host_send.tvalid = output_state == HEADER ? h_com_size_valid : axis_counted.tlast;
+assign o_data.tdata  = output_state == HEADER ? {uncom_size, h_com_size} : axis_counted.tdata;
+assign o_data.tkeep  = output_state == HEADER ? HEADER_SIZE / 8 - 1 : axis_counted.tkeep;
+assign o_data.tlast  = output_state == HEADER ? 0 : axis_counted.tlast;
+assign o_data.tvalid = output_state == HEADER ? h_com_size_valid : axis_counted.tlast;
 
 endmodule

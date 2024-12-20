@@ -1,3 +1,5 @@
+import lynxTypes::*;
+
 module StreamNormalizer #(
     parameter WIDTH = 512,
     parameter REGISTER_LEVELS = 0
@@ -5,32 +7,51 @@ module StreamNormalizer #(
     input logic aclk,
     input logic aresetn,
 
-    AXI4S.s  i_data,
-    AXI4SR.m o_data
+    AXI4S.s i_data,
+    AXI4S.m o_data
 );
 
 localparam int BYTES = WIDTH / 8;
 
+logic[$clog2(BYTES) - 1:0] offset;
+
 AXI4S axis_shifted();
+AXI4S register();
+
+logic emit;
+logic register_and_shifted_keep;
+logic register_or_shifted_keep;
+
+always_ff @(posedge aclk) begin
+    if (~aresetn) begin
+        offset <= 0;
+    end else begin
+        if (i_data.tvalid && i_data.tready) begin
+            offset <= offset + $countones(i_data.tkeep);
+        end
+    end
+end
 
 BarrelShifter #(.WIDTH(WIDTH), .REGISTER_LEVELS(REGISTER_LEVELS)) inst_shifter (
     .aclk(aclk),
     .aresetn(aresetn),
-    .enable(enable),
 
-    .i_offset(), // TODO
+    .i_offset(offset),
     .i_data(i_data),
-    .o_data(axis_shifted),
+    .o_data(axis_shifted)
 );
 
 always_ff @(posedge aclk) begin
     if (~aresetn) begin
-        o_data.tvalid <= 0;
+        register.tlast <= 0;
+        register.tvalid <= 0;
+
+        o_data.tvalid   <= 0;
     end else begin
         if (o_data.tready || !o_data.tvalid) begin // TODO Or new data does not overflow register but then o_data needs to be handled differently too
             for (int i = 0; i < BYTES; i++) begin
                 if (register.tkeep[i]) begin
-                    o_data.tdata[i * 8+:8]   <= register.tdata[i * 8+:8];
+                    o_data.tdata[i * 8+:8] <= register.tdata[i * 8+:8];
                     if (emit) begin
                         register.tdata[i * 8+:8] <= axis_shifted.tdata[i * 8+:8];
                     end
@@ -56,10 +77,7 @@ always_ff @(posedge aclk) begin
                             o_data.tlast <= 1;
                         end else begin // Set flag so that next cycle will write output register
                             register.tlast <= 1;
-                            o_data.tlast <= (byte_counter_plus_64 & cfg_max_transfer_mask) == 0;
                         end
-                    end else begin
-                        o_data.tlast <= (byte_counter_plus_64 & cfg_max_transfer_mask) == 0;
                     end
 
                     register.tkeep  <= register_and_shifted_keep;
