@@ -17,7 +17,6 @@ char_t input_counter;
 logic[COMP_CORES - 1:0] input_valid, input_ready_all;
 logic input_ready;
 page_size_t curr_input_size, next_curr_input_size;
-logic curr_input_size_valid;
 logic flush_input;
 
 char_t gzip_counter;
@@ -33,10 +32,10 @@ page_size_t h_com_size;
 logic h_com_size_valid;
 logic header_ready;
 
-AXI4S axis_fifo[COMP_CORES]();
-AXI4S axis_gzip_all[COMP_CORES]();
-AXI4S axis_gzip();
-AXI4S axis_counted();
+AXI4S axis_fifo[COMP_CORES](.aclk(aclk));
+AXI4S axis_gzip_all[COMP_CORES](.aclk(aclk));
+AXI4S axis_gzip(.aclk(aclk));
+AXI4S axis_counted(.aclk(aclk));
 
 for (genvar i = 0; i < COMP_CORES; i++) begin
     assign axis_fifo[i].tdata  = i_data.tdata;
@@ -48,8 +47,8 @@ for (genvar i = 0; i < COMP_CORES; i++) begin
     GzipWrapper inst_gzip (
         .clk(aclk),
         .rst_n(aresetn),
-        .axis_input(axis_fifo[i]),
-        .axis_output(axis_gzip_all[i])
+        .i_data(axis_fifo[i]),
+        .o_data(axis_gzip_all[i])
     );
 
     assign gzip_data_all[i]  = axis_gzip_all[i].tdata;
@@ -64,7 +63,7 @@ FIFO #(.DEPTH(2 * COMP_CORES), .WIDTH(PAGE_SIZE_WIDTH)) inst_uncom_size_fifo (
     .i_rst_n(aresetn),
 
     .i_data(curr_input_size),
-    .i_valid(curr_input_size_valid),
+    .i_valid(flush_input),
     .o_ready(),
 
     .o_data(uncom_size),
@@ -105,7 +104,7 @@ FIFO #(.DEPTH(2), .WIDTH(PAGE_SIZE_WIDTH)) inst_com_size_fifo (
 always_ff @(posedge aclk) begin
     if (aresetn == 0) begin
         curr_input_size <= 0;
-        input_counter  <= 0;
+        input_counter   <= 0;
     end else begin
         if (flush_input) begin 
             curr_input_size <= 0;
@@ -122,16 +121,11 @@ always_ff @(posedge aclk) begin
 end
 
 always_comb begin
-    curr_input_size_valid <= 0;
     input_valid <= 0;
     input_ready <= 0;
 
     flush_input <= ((i_data.tlast || curr_input_size == PAGE_SIZE) && i_data.tvalid && input_ready) ? 1 : 0; // curr_input_size can never be > PAGE_SIZE because of normalized stream
     next_curr_input_size <= curr_input_size + $countones(i_data.tkeep);
-
-    if (flush_input) begin
-        curr_input_size_valid <= 1;
-    end
 
     for (int i = 0; i < COMP_CORES; i++) begin
         if (input_counter == i) begin
@@ -148,6 +142,7 @@ assign i_data.tready = input_ready;
 ////
 always_ff @(posedge aclk) begin
     if (aresetn == 0) begin
+        com_size     <= 0;
         gzip_counter <= 0;
     end else begin
         com_size_valid <= 0;
@@ -169,8 +164,6 @@ always_ff @(posedge aclk) begin
 end
 
 always_comb begin
-    next_com_size <= com_size + $countones(axis_gzip.tkeep);
-
     for (int i = 0; i < COMP_CORES; i++) begin
         if (gzip_counter == i) begin
             axis_gzip.tdata   <= gzip_data_all[i];
@@ -183,6 +176,8 @@ always_comb begin
         end
     end
 end
+
+assign next_com_size = com_size + $countones(axis_gzip.tkeep);
 
 ////
 // Output
@@ -205,10 +200,10 @@ always_ff @(posedge aclk) begin
 end
 
 assign axis_counted.tready = output_state == BODY ? o_data.tready : 0;
-assign header_ready = output_state == HEADER ? o_data.tready : 0;
+assign header_ready = output_state == HEADER && uncom_size_valid && h_com_size_valid ? o_data.tready : 0;
 
 assign o_data.tdata  = output_state == HEADER ? {uncom_size, h_com_size} : axis_counted.tdata;
-assign o_data.tkeep  = output_state == HEADER ? HEADER_SIZE / 8 - 1 : axis_counted.tkeep;
+assign o_data.tkeep  = output_state == HEADER ? HEADER_SIZE - 1 : axis_counted.tkeep;
 assign o_data.tlast  = output_state == HEADER ? 0 : axis_counted.tlast;
 assign o_data.tvalid = output_state == HEADER ? h_com_size_valid : axis_counted.tlast;
 
