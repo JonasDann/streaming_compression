@@ -19,6 +19,9 @@ localparam TOTAL_WIDTH = FIFO_WIDTH * FACTOR;
 
 logic[TOTAL_WIDTH - 1:0] data_flattened;
 
+AXI4S #(DATA_WIDTH) axis_fifo(.aclk(aclk));
+AXI4S #(DATA_WIDTH) axis_reg(.aclk(aclk));
+
 genvar i;
 generate
 for (i = 0; i < FACTOR; i++) begin
@@ -34,11 +37,41 @@ MultiInsertFIFO #(DEPTH, FIFO_WIDTH, FACTOR) inst_fifo (
     .i_valid(i_data.tvalid),
     .o_ready(i_data.tready),
 
-    .o_data({o_data.tdata, o_data.tkeep, o_data.tlast}),
-    .o_valid(o_data.tvalid),
+    .o_data({axis_fifo.tdata, axis_fifo.tkeep, axis_fifo.tlast}),
+    .o_valid(axis_fifo.tvalid),
     .i_ready(o_data.tready),
 
     .o_filling_level(filling_level)
 );
+
+always_ff @(posedge clk) begin // Remove data beats with keep 0
+    if (rst_n == 0) begin
+        axis_reg.tvalid <= 0;
+        o_data.tvalid   <= 0;
+    end else begin
+        if (o_data.tready) begin
+            o_data.tvalid <= 0;
+
+            if (axis_fifo.tvalid) begin
+                if (|axis_fifo.tkeep) begin
+                    axis_reg.tdata <= axis_fifo.tdata;
+                    axis_reg.tkeep <= axis_fifo.tkeep;
+                end
+                axis_reg.tlast <= axis_fifo.tlast;
+            end
+
+            if (!axis_reg.tvalid || axis_reg.tlast) begin
+                axis_reg.tvalid <= axis_fifo.tvalid;
+            end
+
+            if (axis_reg.tlast || (axis_fifo.tvalid && |axis_fifo.tkeep)) begin
+                o_data.tdata  <= axis_reg.tdata;
+                o_data.tkeep  <= axis_reg.tkeep;
+                o_data.tlast  <= axis_reg.tlast;
+                o_data.tvalid <= axis_reg.tvalid;
+            end
+        end
+    end
+end
 
 endmodule
