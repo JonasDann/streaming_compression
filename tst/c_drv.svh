@@ -52,7 +52,7 @@ class c_drv;
       gen2drv.get(trs);
       drv2scb.put(trs);
       axis.tdata  <= #TA trs.tdata;   
-      axis.tkeep  <= #TA ~0;
+      axis.tkeep  <= #TA trs.tkeep;
       axis.tlast  <= #TA trs.tlast;
       axis.tid    <= #TA trs.tid;
       axis.tvalid <= #TA 1'b1;

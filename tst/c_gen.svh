@@ -29,17 +29,42 @@ class c_gen;
   
   task run();
     c_trs trs;
+    int fd, ch, i;
+
     #(params.delay*CLK_PERIOD);
 
-    for(int i = 0; i < params.n_trs; i++) begin
-      for (int j = 0; j < PAGE_BEATS; j++) begin
-        trs = new();
-        if(!trs.randomize()) $fatal("ERR:  Generator randomization failed");
-        trs.tlast = j == PAGE_BEATS - 1;
+    fd = $fopen ("/local/home/jodann/vitis_libs/data_compression/L1/tests/gzipc_static_8KB/sample.txt", "r");
+
+    trs = new();
+    trs.tkeep = 64'b0;
+    ch = $fgetc(fd);
+    while (ch != -1) begin
+      trs.tdata[i * 8+:8] = ch[7:0];
+      trs.tkeep[i] = 1;
+      i++;
+      ch = $fgetc(fd);
+
+      if (i >= 64) begin
+        if (ch == -1) begin
+          trs.tlast = 1;
+        end else begin
+          trs.tlast = 0;
+        end
         trs.display("Gen");
         gen2drv.put(trs);
+        trs = new();
+        trs.tkeep = 64'b0;
+        i = 0;
       end
     end
+    
+    if (i > 0) begin
+      trs.tlast = 1;
+      trs.display("Gen");
+      gen2drv.put(trs);
+    end
+    
+    $fclose(fd);
     -> done;
   endtask
 

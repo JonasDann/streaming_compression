@@ -14,7 +14,7 @@ endtask
 
 module tb_user;
 
-    c_struct_t params = { 64, 16 };
+    c_struct_t params = { 32'd64, 32'd64 };
 
     logic aclk = 1'b1;
     logic aresetn = 1'b0;
