@@ -202,9 +202,9 @@ end
 assign axis_counted.tready = output_state == BODY ? o_data.tready : 0;
 assign header_ready = output_state == HEADER && uncom_size_valid && h_com_size_valid ? o_data.tready : 0;
 
-assign o_data.tdata  = output_state == HEADER ? {uncom_size, h_com_size} : axis_counted.tdata;
-assign o_data.tkeep  = output_state == HEADER ? HEADER_SIZE - 1 : axis_counted.tkeep;
+assign o_data.tdata  = output_state == HEADER ? {16'(uncom_size), 16'(h_com_size)} : axis_counted.tdata;
+assign o_data.tkeep  = output_state == HEADER ? 2 ** (HEADER_SIZE / 8) - 1 : axis_counted.tkeep;
 assign o_data.tlast  = output_state == HEADER ? 0 : axis_counted.tlast;
-assign o_data.tvalid = output_state == HEADER ? h_com_size_valid : axis_counted.tlast;
+assign o_data.tvalid = output_state == HEADER ? h_com_size_valid : axis_counted.tvalid;
 
 endmodule

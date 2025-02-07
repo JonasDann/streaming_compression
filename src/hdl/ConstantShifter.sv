@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+
 import lynxTypes::*;
 
 module ConstantShifter #(
@@ -5,16 +7,16 @@ module ConstantShifter #(
     parameter WIDTH = 512,
     parameter REGISTER = 0,
     parameter BYTES = WIDTH / 8,
-    parameter OFFSET_WIDTH = $clog2(BYTES) + 1
+    parameter OFFSET_WIDTH = $clog2(BYTES)
 ) (
     input logic aclk,
     input logic aresetn,
 
     AXI4S.s                   i_data,
-    logic[OFFSET_WIDTH - 1:0] i_offset,
+    input logic[OFFSET_WIDTH - 1:0] i_offset,
 
     AXI4S.m                   o_data,
-    logic[OFFSET_WIDTH - 1:0] o_offset
+    output logic[OFFSET_WIDTH - 1:0] o_offset
 );
 
 // Calculate the shift amount from the bit index
@@ -43,6 +45,8 @@ generate if (REGISTER == 1) begin
             o_data.tkeep  <= keep_shifted;
             o_data.tlast  <= i_data.tlast;
             o_data.tvalid <= i_data.tvalid;
+
+            o_offset <= i_offset;
         end
     end
 end else begin
@@ -50,6 +54,8 @@ end else begin
     assign o_data.tkeep  = keep_shifted;
     assign o_data.tlast  = i_data.tlast;
     assign o_data.tvalid = i_data.tvalid;
+
+    assign o_offset = i_offset;
 end endgenerate
 
 assign i_data.tready = o_data.tready;

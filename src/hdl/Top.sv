@@ -11,8 +11,8 @@ module Top (
     AXI4SR.m axis_host_send
 );
 
-AXI4S axis_compressed();
-AXI4S axis_normalized();
+AXI4S axis_compressed(.aclk(aclk));
+AXI4S axis_normalized(.aclk(aclk));
 
 CompressionArbiter inst_arbiter (
     .aclk(aclk),

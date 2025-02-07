@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+
 import lynxTypes::*;
 
 `include "axi_macros.svh"
@@ -6,7 +8,7 @@ module BarrelShifter #(
     parameter WIDTH = 512,
     parameter REGISTER_LEVELS = 0,
     parameter BYTES = WIDTH / 8,
-    parameter OFFSET_WIDTH = $clog2(BYTES) + 1
+    parameter OFFSET_WIDTH = $clog2(BYTES)
 ) (
     input logic aclk,
     input logic aresetn,
@@ -20,11 +22,11 @@ module BarrelShifter #(
 localparam int PIPELINE_STAGES = $clog2(BYTES) + 1;
 localparam int REGISTER_GAP = (REGISTER_LEVELS == 0 ? PIPELINE_STAGES + 1 : PIPELINE_STAGES / REGISTER_LEVELS);
 
-AXI4S axis_stages[PIPELINE_STAGES]();
+AXI4S axis_stages[PIPELINE_STAGES](.aclk(aclk));
 logic[OFFSET_WIDTH - 1:0] offset_stages[PIPELINE_STAGES];
 
 // Input assignments
-`AXIS_ASSIGN(axis_stages[0], i_data)
+`AXIS_ASSIGN(i_data, axis_stages[0])
 assign offset_stages[0] = i_offset;
 
 // Generate pipeline stages
@@ -42,6 +44,6 @@ for (genvar i = 0; i < PIPELINE_STAGES - 1; i++) begin
 end
 
 // Iutput assignments
-`AXIS_ASSIGN(o_data, axis_stages[PIPELINE_STAGES - 1])
+`AXIS_ASSIGN(axis_stages[PIPELINE_STAGES - 1], o_data)
 
 endmodule

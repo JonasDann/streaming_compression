@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+
 import lynxTypes::*;
 
 module StreamNormalizer #(
@@ -15,12 +17,12 @@ localparam int BYTES = WIDTH / 8;
 
 logic[$clog2(BYTES) - 1:0] offset;
 
-AXI4S axis_shifted();
-AXI4S register();
+AXI4S axis_shifted(.aclk(aclk));
+AXI4S register(.aclk(aclk));
 
 logic emit;
-logic register_and_shifted_keep;
-logic register_or_shifted_keep;
+logic[WIDTH / 8 - 1:0] register_and_shifted_keep;
+logic[WIDTH / 8 - 1:0] register_or_shifted_keep;
 
 always_ff @(posedge aclk) begin
     if (~aresetn) begin
@@ -43,14 +45,12 @@ BarrelShifter #(.WIDTH(WIDTH), .REGISTER_LEVELS(REGISTER_LEVELS)) inst_shifter (
 
 always_ff @(posedge aclk) begin
     if (~aresetn) begin
-        register.tlast <= 0;
         register.tvalid <= 0;
-
         o_data.tvalid   <= 0;
     end else begin
-        if (o_data.tready || !o_data.tvalid) begin // TODO Or new data does not overflow register but then o_data needs to be handled differently too
+        if (o_data.tready || !o_data.tvalid) begin // TODO Add to condition: or new data does not overflow register (but then o_data needs to be handled differently too)
             for (int i = 0; i < BYTES; i++) begin
-                if (register.tkeep[i]) begin
+                if (register.tvalid && register.tkeep[i]) begin
                     o_data.tdata[i * 8+:8] <= register.tdata[i * 8+:8];
                     if (emit) begin
                         register.tdata[i * 8+:8] <= axis_shifted.tdata[i * 8+:8];
@@ -62,12 +62,6 @@ always_ff @(posedge aclk) begin
             end
 
             if (axis_shifted.tvalid) begin // Only if valid data is coming out of the shifter, the output stage can be updated
-                for (int i = 0; i < BYTES; i++) begin
-                    if (axis_shifted.tkeep[i]) begin
-                        register.tdata[i * 8+:8] <= axis_shifted.tdata[i * 8+:8];
-                    end
-                end
-
                 if (emit) begin // The output register would be full
                     o_data.tkeep  <= -1;
                     o_data.tvalid <= 1;
@@ -78,6 +72,9 @@ always_ff @(posedge aclk) begin
                         end else begin // Set flag so that next cycle will write output register
                             register.tlast <= 1;
                         end
+                    end else begin
+                        register.tlast <= 0;
+                        o_data.tlast   <= 0;
                     end
 
                     register.tkeep  <= register_and_shifted_keep;
@@ -87,10 +84,14 @@ always_ff @(posedge aclk) begin
                         o_data.tkeep  <= register_or_shifted_keep;
                         o_data.tlast  <= 1;
                         o_data.tvalid <= 1;
+
+                        register.tvalid <= 0;
                     end else begin
                         o_data.tvalid <= 0; // this cannot be valid anymore
                         
-                        register.tkeep <= register_or_shifted_keep;
+                        register.tkeep  <= register_or_shifted_keep;
+                        register.tlast  <= 0;
+                        register.tvalid <= |register_or_shifted_keep;
                     end
                 end
             end else begin
@@ -99,7 +100,8 @@ always_ff @(posedge aclk) begin
                     o_data.tlast  <= 1;
                     o_data.tvalid <= 1;
 
-                    register.tlast <= 0;
+                    register.tlast  <= 0;
+                    register.tvalid <= 0;
                 end else begin
                     o_data.tvalid <= 0;
                 end
@@ -108,10 +110,10 @@ always_ff @(posedge aclk) begin
     end
 end
 
-always_comb begin
-    emit <= register.tvalid && (axis_shifted.tkeep | register.tkeep) == -1;
-    register_and_shifted_keep <= register.tkeep & axis_shifted.tkeep;
-    register_or_shifted_keep  <= register.tkeep | axis_shifted.tkeep;
-end
+assign emit = register.tvalid && &(register.tkeep | axis_shifted.tkeep);
+assign register_and_shifted_keep = register.tvalid ? register.tkeep & axis_shifted.tkeep : axis_shifted.tkeep;
+assign register_or_shifted_keep = register.tvalid ? register.tkeep | axis_shifted.tkeep : axis_shifted.tkeep;
+
+assign axis_shifted.tready = o_data.tready;
 
 endmodule
