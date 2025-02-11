@@ -16,7 +16,7 @@ parameter HEADER_SIZE = 32;
 char_t input_counter;
 logic[COMP_CORES - 1:0] input_valid, input_ready_all;
 logic input_ready;
-page_size_t curr_input_size, next_curr_input_size;
+page_size_t curr_input_size, curr_input_size_succ;
 logic flush_input;
 
 char_t gzip_counter;
@@ -62,7 +62,7 @@ FIFO #(.DEPTH(2 * COMP_CORES), .WIDTH(PAGE_SIZE_WIDTH)) inst_uncom_size_fifo (
     .i_clk(aclk),
     .i_rst_n(aresetn),
 
-    .i_data(curr_input_size),
+    .i_data(curr_input_size_succ),
     .i_valid(flush_input),
     .o_ready(),
 
@@ -115,7 +115,7 @@ always_ff @(posedge aclk) begin
                 input_counter  <= input_counter + 1;
             end
         end else begin
-            curr_input_size <= next_curr_input_size;
+            curr_input_size <= curr_input_size_succ;
         end
     end
 end
@@ -125,7 +125,7 @@ always_comb begin
     input_ready <= 0;
 
     flush_input <= ((i_data.tlast || curr_input_size == PAGE_SIZE) && i_data.tvalid && input_ready) ? 1 : 0; // curr_input_size can never be > PAGE_SIZE because of normalized stream
-    next_curr_input_size <= curr_input_size + $countones(i_data.tkeep);
+    curr_input_size_succ <= curr_input_size + $countones(i_data.tkeep);
 
     for (int i = 0; i < COMP_CORES; i++) begin
         if (input_counter == i) begin
