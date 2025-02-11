@@ -55,6 +55,7 @@ class c_mon;
         end
         axis.tready <= #TA 1'b0;
         trs.tdata = axis.tdata;
+        trs.tkeep = axis.tkeep;
         trs.tlast = axis.tlast;
         trs.tid = axis.tid;
         mon2scb.put(trs);

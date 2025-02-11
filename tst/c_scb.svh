@@ -36,17 +36,28 @@ class c_scb;
   //
 
   task run;
-    c_trs trs_mon;
+    c_trs trs_mon = new;
     c_trs trs_drv;
-    int i = 0;
+    int fd, ch, i, j = 0;
     fail = 0;
+
+    fd = $fopen ("/local/home/jodann/streaming_compression/out.bin", "r");
     
-    while (i < params.n_trs) begin
+    while (!trs_mon.tlast) begin
       mon2scb.get(trs_mon);
-      if (trs_mon.tlast) begin
-        i++;
+      for (j = 0; j < 64; j++) begin
+        if (trs_mon.tkeep[i]) begin
+          ch = $fgetc(fd);
+          assert (ch != -1) else $error("Stream is too long.");
+          assert (trs_mon.tdata[i * 8+:8] == ch[7:0]) else $error("Expected: %h, actual: %h (%d, %d)", ch[7:0], trs_mon.tdata[i * 8+:8], i, j);
+          i++;
+        end
       end
     end
+    assert(i == 420) else $error("Stream is too short: expected: %d, actual: %d", 420, i);
+
+    $fclose(fd);
+
     -> done;
   endtask
   

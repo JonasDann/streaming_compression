@@ -33,7 +33,7 @@ class c_gen;
 
     #(params.delay*CLK_PERIOD);
 
-    fd = $fopen ("/local/home/jodann/vitis_libs/data_compression/L1/tests/gzipc_static_8KB/sample.txt", "r");
+    fd = $fopen ("/local/home/jodann/streaming_compression/sample.txt", "r");
 
     trs = new();
     trs.tkeep = 64'b0;
