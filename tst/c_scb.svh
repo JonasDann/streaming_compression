@@ -41,12 +41,13 @@ class c_scb;
     int fd, ch, i, j = 0;
     fail = 0;
 
+    /* Example to check transactions against file
     fd = $fopen ("/local/home/jodann/streaming_compression/out.bin", "r");
     
     while (!trs_mon.tlast) begin
       mon2scb.get(trs_mon);
       for (j = 0; j < 64; j++) begin
-        if (trs_mon.tkeep[i]) begin
+        if (trs_mon.tkeep[j]) begin
           ch = $fgetc(fd);
           assert (ch != -1) else $error("Stream is too long.");
           assert (trs_mon.tdata[i * 8+:8] == ch[7:0]) else $error("Expected: %h, actual: %h (%d, %d)", ch[7:0], trs_mon.tdata[i * 8+:8], i, j);
@@ -55,6 +56,20 @@ class c_scb;
       end
     end
     assert(i == 420) else $error("Stream is too short: expected: %d, actual: %d", 420, i);
+
+    $fclose(fd);
+    */
+
+    fd = $fopen("/local/home/jodann/streaming_compression/out.bin", "wb");
+    
+    while (!trs_mon.tlast) begin
+      mon2scb.get(trs_mon);
+      for (j = 0; j < 64; j++) begin
+        if (trs_mon.tkeep[j]) begin
+          $fwrite(fd, "%c", trs_mon.tdata[j * 8+:8]);
+        end
+      end
+    end
 
     $fclose(fd);
 
