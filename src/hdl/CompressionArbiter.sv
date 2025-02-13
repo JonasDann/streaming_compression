@@ -17,16 +17,16 @@ char_t input_counter;
 logic[COMP_CORES - 1:0] input_valid, input_ready_all;
 logic input_ready;
 page_size_t curr_input_size, curr_input_size_succ;
-logic flush_input;
+logic flush_input, last;
 
 char_t gzip_counter;
 logic[AXI_DATA_BITS - 1:0] gzip_data_all[COMP_CORES];
 logic[AXI_DATA_BITS / 8 - 1:0] gzip_keep_all[COMP_CORES];
 logic[COMP_CORES - 1:0] gzip_last_all, gzip_valid_all, gzip_ready_all;
-page_size_t uncom_size, com_size, next_com_size;
+page_size_t uncom_size, com_size, com_size_succ, axis_gzip_keep_ones;
 logic com_size_valid;
 
-typedef enum logic[1:0] {HEADER, BODY} ostate_t;
+typedef enum logic[1:0] {HEADER, BODY, LAST} ostate_t;
 ostate_t output_state;
 page_size_t h_com_size;
 logic h_com_size_valid;
@@ -40,7 +40,7 @@ AXI4S axis_counted(.aclk(aclk));
 for (genvar i = 0; i < COMP_CORES; i++) begin
     assign axis_fifo[i].tdata  = i_data.tdata;
     assign axis_fifo[i].tkeep  = i_data.tkeep;
-    assign axis_fifo[i].tlast  = i_data.tlast;
+    assign axis_fifo[i].tlast  = flush_input;
     assign axis_fifo[i].tvalid = input_valid[i];
     assign input_ready_all[i] = axis_fifo[i].tready;
 
@@ -58,15 +58,15 @@ for (genvar i = 0; i < COMP_CORES; i++) begin
     assign axis_gzip_all[i].tready = gzip_ready_all[i];
 end
 
-FIFO #(.DEPTH(2 * COMP_CORES), .WIDTH(PAGE_SIZE_WIDTH)) inst_uncom_size_fifo (
+FIFO #(.DEPTH(2 * COMP_CORES), .WIDTH(PAGE_SIZE_WIDTH + 1)) inst_uncom_size_fifo (
     .i_clk(aclk),
     .i_rst_n(aresetn),
 
-    .i_data(curr_input_size_succ),
+    .i_data({curr_input_size_succ, i_data.tlast}),
     .i_valid(flush_input),
     .o_ready(),
 
-    .o_data(uncom_size),
+    .o_data({uncom_size, last}),
     .o_valid(uncom_size_valid),
     .i_ready(header_ready),
 
@@ -120,12 +120,12 @@ always_ff @(posedge aclk) begin
     end
 end
 
+assign curr_input_size_succ = curr_input_size + $countones(i_data.tkeep);
+assign flush_input = ((i_data.tlast || curr_input_size_succ == PAGE_SIZE) && i_data.tvalid && input_ready) ? 1 : 0; // curr_input_size can never be > PAGE_SIZE because of normalized stream
+
 always_comb begin
     input_valid <= 0;
     input_ready <= 0;
-
-    flush_input <= ((i_data.tlast || curr_input_size == PAGE_SIZE) && i_data.tvalid && input_ready) ? 1 : 0; // curr_input_size can never be > PAGE_SIZE because of normalized stream
-    curr_input_size_succ <= curr_input_size + $countones(i_data.tkeep);
 
     for (int i = 0; i < COMP_CORES; i++) begin
         if (input_counter == i) begin
@@ -148,7 +148,11 @@ always_ff @(posedge aclk) begin
         com_size_valid <= 0;
 
         if (axis_gzip.tready && axis_gzip.tvalid) begin
-            com_size <= next_com_size;
+            if (com_size_valid) begin
+                com_size <= axis_gzip_keep_ones;
+            end else begin
+                com_size <= com_size_succ;
+            end
 
             if (axis_gzip.tlast) begin
                 com_size_valid <= 1;
@@ -159,6 +163,8 @@ always_ff @(posedge aclk) begin
                     gzip_counter <= gzip_counter + 1;
                 end
             end
+        end else if (com_size_valid) begin
+            com_size <= 0;
         end
     end
 end
@@ -177,7 +183,8 @@ always_comb begin
     end
 end
 
-assign next_com_size = com_size + $countones(axis_gzip.tkeep);
+assign axis_gzip_keep_ones = $countones(axis_gzip.tkeep);
+assign com_size_succ = com_size + axis_gzip_keep_ones;
 
 ////
 // Output
@@ -189,9 +196,13 @@ always_ff @(posedge aclk) begin
         case (output_state)
             HEADER: begin
                 if (h_com_size_valid && o_data.tready) begin
-                    output_state <= BODY;
+                    if (last) begin
+                        output_state <= LAST;
+                    end else begin
+                        output_state <= BODY;
+                    end
                 end end
-            BODY: begin
+            BODY, LAST: begin
                 if (o_data.tready && axis_counted.tvalid && axis_counted.tlast) begin
                     output_state <= HEADER;
                 end end
@@ -199,12 +210,12 @@ always_ff @(posedge aclk) begin
     end
 end
 
-assign axis_counted.tready = output_state == BODY ? o_data.tready : 0;
+assign axis_counted.tready = !(output_state == HEADER) ? o_data.tready : 0;
 assign header_ready = output_state == HEADER && uncom_size_valid && h_com_size_valid ? o_data.tready : 0;
 
 assign o_data.tdata  = output_state == HEADER ? {16'(uncom_size), 16'(h_com_size)} : axis_counted.tdata;
 assign o_data.tkeep  = output_state == HEADER ? 2 ** (HEADER_SIZE / 8) - 1 : axis_counted.tkeep;
-assign o_data.tlast  = output_state == HEADER ? 0 : axis_counted.tlast;
+assign o_data.tlast  = output_state == LAST   ? axis_counted.tlast : 0;
 assign o_data.tvalid = output_state == HEADER ? h_com_size_valid : axis_counted.tvalid;
 
 endmodule

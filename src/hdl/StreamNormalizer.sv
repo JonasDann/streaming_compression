@@ -48,7 +48,7 @@ always_ff @(posedge aclk) begin
         register.tvalid <= 0;
         o_data.tvalid   <= 0;
     end else begin
-        if (o_data.tready || !o_data.tvalid) begin // TODO Add to condition: or new data does not overflow register (but then o_data needs to be handled differently too)
+        if (o_data.tready) begin // TODO Add to condition: or !o_data.tvalid or new data does not overflow register (but then o_data needs to be handled differently too)
             for (int i = 0; i < BYTES; i++) begin
                 if (register.tvalid && register.tkeep[i]) begin
                     o_data.tdata[i * 8+:8] <= register.tdata[i * 8+:8];
