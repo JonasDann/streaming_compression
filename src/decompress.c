@@ -19,7 +19,7 @@ int decompressFromGzip(const char* input, int inputSize, char* output, int outpu
 }
 
 int main(int argc, char** argv) {
-    int buffer_len = 8192;
+    int buffer_len = 8 * 8192;
     char source[buffer_len];
     char dest[buffer_len];
 
@@ -33,12 +33,19 @@ int main(int argc, char** argv) {
     }
     printf("Input is %d Bytes long\n", compressed_len);
 
-    int uncompressed_len = decompressFromGzip(source + 4, compressed_len - 4, dest, buffer_len);
-    printf("Output is %d Bytes long\n", uncompressed_len);
-
-    unsigned short *header = (unsigned short *) source;
-    if (compressed_len - 4 != header[0]) printf("Compressed size wrong: expected: %d, actual: %d\n", compressed_len - 4, header[0]);
-    if (uncompressed_len != header[1]) printf("Uncompressed size wrong: expected: %d, actual: %d\n", uncompressed_len, header[1]);
+    int offset = 0;
+    int uncompressed_len = 0;
+    while (offset < compressed_len) {
+        unsigned short *header = (unsigned short *) (source + offset);
+        offset += 4;
+        int len = decompressFromGzip(source + offset, header[0], dest + uncompressed_len, buffer_len);
+        printf("Output is %d Bytes long\n", len);
+        uncompressed_len += len;
+        offset += header[0];
+        
+        if (len != header[1]) printf("Uncompressed size wrong: expected: %d, actual: %d\n", len, header[1]);
+    }
+    if (offset != compressed_len) printf("Something is wrong with the headers: expected: %d, actual: %d\n", compressed_len, offset);
 
     fp = fopen("sample.txt", "r");
     char original[buffer_len];
