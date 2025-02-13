@@ -44,6 +44,7 @@ class c_mon;
     forever begin
         c_trs trs;
         trs = new();
+        while ($urandom_range(0, 3) != 0) begin cycle_wait(); end
         axis.tready <= #TA 1'b1;
         cycle_start();
         while(axis.tvalid != 1'b1) begin cycle_wait(); cycles++; cycle_start(); end

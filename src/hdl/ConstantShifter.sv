@@ -12,10 +12,10 @@ module ConstantShifter #(
     input logic aclk,
     input logic aresetn,
 
-    AXI4S.s                   i_data,
+    AXI4S.s i_data,
     input logic[OFFSET_WIDTH - 1:0] i_offset,
 
-    AXI4S.m                   o_data,
+    AXI4S.m o_data,
     output logic[OFFSET_WIDTH - 1:0] o_offset
 );
 
@@ -41,12 +41,14 @@ generate if (REGISTER == 1) begin
         if (~aresetn == 1'b1) begin
             o_data.tvalid <= 1'b0;
         end else begin
-            o_data.tdata  <= data_shifted;
-            o_data.tkeep  <= keep_shifted;
-            o_data.tlast  <= i_data.tlast;
-            o_data.tvalid <= i_data.tvalid;
+            if (o_data.tready) begin
+                o_data.tdata  <= data_shifted;
+                o_data.tkeep  <= keep_shifted;
+                o_data.tlast  <= i_data.tlast;
+                o_data.tvalid <= i_data.tvalid;
 
-            o_offset <= i_offset;
+                o_offset <= i_offset;
+            end
         end
     end
 end else begin
