@@ -20,7 +20,7 @@ module BarrelShifter #(
 );
 
 localparam int PIPELINE_STAGES = $clog2(BYTES) + 1;
-localparam int REGISTER_GAP = (REGISTER_LEVELS == 0 ? PIPELINE_STAGES + 1 : PIPELINE_STAGES / REGISTER_LEVELS);
+localparam int REGISTER_GAP = (REGISTER_LEVELS == 0 ? PIPELINE_STAGES + 2 : PIPELINE_STAGES / REGISTER_LEVELS);
 
 AXI4S axis_stages[PIPELINE_STAGES](.aclk(aclk));
 logic[OFFSET_WIDTH - 1:0] offset_stages[PIPELINE_STAGES];
@@ -31,7 +31,7 @@ assign offset_stages[0] = i_offset;
 
 // Generate pipeline stages
 for (genvar i = 0; i < PIPELINE_STAGES - 1; i++) begin
-    ConstantShifter #(.SHIFT_INDEX(i), .WIDTH(WIDTH), .REGISTER((i % REGISTER_GAP) == 0)) inst_shifter (
+    ConstantShifter #(.SHIFT_INDEX(i), .WIDTH(WIDTH), .REGISTER((i + 1 % REGISTER_GAP) == 0)) inst_shifter (
         .aclk(aclk),
         .aresetn(aresetn),
 
