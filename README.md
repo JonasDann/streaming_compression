@@ -8,9 +8,9 @@ source /opt/sgrt/cli/enable/vivado
 vivado build_hw/sim/test.xpr
 ```
 
-Thereafter, start simulation.
+Thereafter, start the simulation in the Vivado GUI. You can add signals to the waveform and run the simulation until it finishes on its own after about 40 microseconds.
 
-The output that it is checked against can be produced with `make && ./compress`. However, this currently does not work correctly. The only way to check correctness is to copy the `sample.txt.gz` contents from the cosim of the Vitis Libraries repo which is super hacky.
+The output will be written to out.bin and can be checked by `make && ./decompress`.
 
 ## Compression IP
 Compression IP core generated from Vitis Libraries https://github.com/Xilinx/Vitis_Libraries/tree/main/data_compression/L1/tests/gzipc_static_8KB by executing `make run CSYNTH=1 DEVICE=u55c` and linking to the `gzip_compress_test.prj/sol1/impl/ip` IP in Vivado.
