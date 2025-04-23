@@ -1,0 +1,7 @@
+build_hw
+bin
+vivado*
+*.bin
+.Xil
+*.log
+build

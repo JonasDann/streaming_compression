@@ -13,7 +13,7 @@ Thereafter, start the simulation in the Vivado GUI. You can add signals to the w
 The output will be written to out.bin and can be checked by `make && ./decompress`.
 
 ## Compression IP
-Compression IP core generated from Vitis Libraries https://github.com/Xilinx/Vitis_Libraries/tree/main/data_compression/L1/tests/gzipc_static_8KB by executing `make run CSYNTH=1 DEVICE=u55c` and linking to the `gzip_compress_test.prj/sol1/impl/ip` IP in Vivado.
+Compression IP core generated from Vitis Libraries https://github.com/Xilinx/Vitis_Libraries/tree/main/data_compression/L1/tests/gzipc_static_8KB by executing `make run CSYNTH=1 DEVICE=u55c` and copying `gzip_compress_test.prj/sol1/impl/ip` IP into `src/ip/gzip_compress`.
 
 ## Related projects
 This repo is used as part of the storage deduplication system in https://github.com/fpgasystems/dedup and implements an arbiter for a GZip compression core to be able to compress multiple pages in parallel.

@@ -26,7 +26,7 @@ MultiInsertFIFOAXI #(512, COMP_DATA_BITS, AXI_DATA_BITS / COMP_DATA_BITS) inst_i
     .filling_level()
 );
 
-gzipcMulticoreStreaming_0 inst_gzip (
+gzipcMulticoreStreaming inst_gzip (
     .ap_clk(clk),
     .ap_rst_n(rst_n),
 
