@@ -11,14 +11,14 @@ module GzipCompressWrapper (
     AXI4S.m o_data
 );
 
-localparam COMP_DATA_BITS = 64
+localparam COMP_DATA_BITS = 64;
 
 char_t output_counter;
 logic[AXI_DATA_BITS - 1:0] output_data;
 
-AXI4S #(COMP_DATA_BITS) axis_fifo(.aclk(aclk));
-AXI4S #(COMP_DATA_BITS) axis_gzip(.aclk(aclk));
-AXI4S axis_o_fifo(.aclk(aclk));
+AXI4S #(COMP_DATA_BITS) axis_fifo(.aclk(clk));
+AXI4S #(COMP_DATA_BITS) axis_gzip(.aclk(clk));
+AXI4S axis_o_fifo(.aclk(clk));
 
 MultiInsertFIFOAXI #(512, COMP_DATA_BITS, AXI_DATA_BITS / COMP_DATA_BITS) inst_input_fifo (
     .clk(clk),
@@ -28,7 +28,7 @@ MultiInsertFIFOAXI #(512, COMP_DATA_BITS, AXI_DATA_BITS / COMP_DATA_BITS) inst_i
     .filling_level()
 );
 
-gzipcMulticoreStreaming inst_gzip (
+gzipcMulticoreStreaming_0 inst_gzip (
     .ap_clk(clk),
     .ap_rst_n(rst_n),
 

@@ -1,7 +1,6 @@
-build_hw
+build*
 bin
 vivado*
 *.bin
 .Xil
 *.log
-build
