@@ -3,13 +3,15 @@
 import lynxTypes::*;
 import common::*;
 
-module GzipWrapper (
+module GzipCompressWrapper (
     input logic clk,
     input logic rst_n,
 
     AXI4S.s i_data,
     AXI4S.m o_data
 );
+
+localparam COMP_DATA_BITS = 64
 
 char_t output_counter;
 logic[AXI_DATA_BITS - 1:0] output_data;

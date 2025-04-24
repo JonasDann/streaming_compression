@@ -46,13 +46,7 @@ localparam bit[N_REGS - 1:0] WRITEABLE = 'b0001;
 assign ctrl_reg_wren = axi_wready && axi_ctrl.wvalid && axi_awready && axi_ctrl.awvalid;
 
 always_ff @(posedge aclk) begin
-    ctrl_reg[RESET_STATS_REG] <= 0;
-
     if (ctrl_reg_wren) begin
-        if (axi_awaddr[ADDR_LSB+:ADDR_MSB] == RESET_STATS_REG) begin
-            ctrl_reg[RESET_STATS_REG] <= 1;
-        end
-
         for (int i = 0; i < N_REGS; i++) begin
             if (axi_awaddr[ADDR_LSB+:ADDR_MSB] == i && WRITEABLE[i]) begin
                 for (int j = 0; j < (AXIL_DATA_BITS / 8); j++) begin
@@ -73,9 +67,9 @@ always_ff @(posedge aclk) begin
 
     if(ctrl_reg_rden) begin
         case (axi_araddr[ADDR_LSB+:ADDR_MSB])
-            PAGE_SIZE_REG:   axi_rdata[31:0] <= PAGE_SIZE;
-            COMP_CORE_REG:   axi_rdata[31:0] <= COMP_CORES;
-            TIMER_REG:       axi_rdata[31:0] <= timer;
+            PAGE_SIZE_REG:  axi_rdata[31:0] <= PAGE_SIZE;
+            COMP_CORES_REG: axi_rdata[31:0] <= COMP_CORES;
+            TIMER_REG:      axi_rdata[31:0] <= timer;
             default: ;
         endcase
     end

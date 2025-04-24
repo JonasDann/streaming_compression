@@ -19,11 +19,11 @@ logic input_ready;
 page_size_t curr_input_size, curr_input_size_succ;
 logic flush_input, last;
 
-char_t gzip_counter;
-logic[AXI_DATA_BITS - 1:0] gzip_data_all[COMP_CORES];
-logic[AXI_DATA_BITS / 8 - 1:0] gzip_keep_all[COMP_CORES];
-logic[COMP_CORES - 1:0] gzip_last_all, gzip_valid_all, gzip_ready_all;
-page_size_t uncom_size, com_size, com_size_succ, axis_gzip_keep_ones;
+char_t compress_counter;
+logic[AXI_DATA_BITS - 1:0] compress_data_all[COMP_CORES];
+logic[AXI_DATA_BITS / 8 - 1:0] compress_keep_all[COMP_CORES];
+logic[COMP_CORES - 1:0] compress_last_all, compress_valid_all, compress_ready_all;
+page_size_t uncom_size, com_size, com_size_succ, axis_compress_keep_ones;
 logic com_size_valid;
 
 typedef enum logic[1:0] {HEADER, BODY, LAST} ostate_t;
@@ -33,8 +33,8 @@ logic h_com_size_valid;
 logic header_ready;
 
 AXI4S axis_fifo[COMP_CORES](.aclk(aclk));
-AXI4S axis_gzip_all[COMP_CORES](.aclk(aclk));
-AXI4S axis_gzip(.aclk(aclk));
+AXI4S axis_compress_all[COMP_CORES](.aclk(aclk));
+AXI4S axis_compress(.aclk(aclk));
 AXI4S axis_counted(.aclk(aclk));
 
 for (genvar i = 0; i < COMP_CORES; i++) begin
@@ -44,18 +44,18 @@ for (genvar i = 0; i < COMP_CORES; i++) begin
     assign axis_fifo[i].tvalid = input_valid[i];
     assign input_ready_all[i] = axis_fifo[i].tready;
 
-    GzipWrapper inst_gzip (
+    GzipCompressWrapper inst_gzip (
         .clk(aclk),
         .rst_n(aresetn),
         .i_data(axis_fifo[i]),
-        .o_data(axis_gzip_all[i])
+        .o_data(axis_compress_all[i])
     );
 
-    assign gzip_data_all[i]  = axis_gzip_all[i].tdata;
-    assign gzip_keep_all[i]  = axis_gzip_all[i].tkeep;
-    assign gzip_last_all[i]  = axis_gzip_all[i].tlast;
-    assign gzip_valid_all[i] = axis_gzip_all[i].tvalid;
-    assign axis_gzip_all[i].tready = gzip_ready_all[i];
+    assign compress_data_all[i]  = axis_compress_all[i].tdata;
+    assign compress_keep_all[i]  = axis_compress_all[i].tkeep;
+    assign compress_last_all[i]  = axis_compress_all[i].tlast;
+    assign compress_valid_all[i] = axis_compress_all[i].tvalid;
+    assign axis_compress_all[i].tready = compress_ready_all[i];
 end
 
 FIFO #(.DEPTH(2 * COMP_CORES), .WIDTH(PAGE_SIZE_WIDTH + 1)) inst_uncom_size_fifo (
@@ -77,7 +77,7 @@ FIFOAXI #(.DEPTH(2 * (PAGE_SIZE / 64))) inst_fifo (
     .clk(aclk),
     .rst_n(aresetn),
 
-    .i_data(axis_gzip),
+    .i_data(axis_compress),
     .o_data(axis_counted),
 
     .filling_level()
@@ -110,9 +110,9 @@ always_ff @(posedge aclk) begin
             curr_input_size <= 0;
 
             if (input_counter == COMP_CORES - 1) begin
-                input_counter  <= 0;
+                input_counter <= 0;
             end else begin
-                input_counter  <= input_counter + 1;
+                input_counter <= input_counter + 1;
             end
         end else begin
             curr_input_size <= curr_input_size_succ;
@@ -143,24 +143,24 @@ assign i_data.tready = input_ready;
 always_ff @(posedge aclk) begin
     if (aresetn == 0) begin
         com_size     <= 0;
-        gzip_counter <= 0;
+        compress_counter <= 0;
     end else begin
         com_size_valid <= 0;
 
-        if (axis_gzip.tready && axis_gzip.tvalid) begin
+        if (axis_compress.tready && axis_compress.tvalid) begin
             if (com_size_valid) begin
-                com_size <= axis_gzip_keep_ones;
+                com_size <= axis_compress_keep_ones;
             end else begin
                 com_size <= com_size_succ;
             end
 
-            if (axis_gzip.tlast) begin
+            if (axis_compress.tlast) begin
                 com_size_valid <= 1;
 
-                if (gzip_counter == COMP_CORES - 1) begin
-                    gzip_counter <= 0;
+                if (compress_counter == COMP_CORES - 1) begin
+                    compress_counter <= 0;
                 end else begin
-                    gzip_counter <= gzip_counter + 1;
+                    compress_counter <= compress_counter + 1;
                 end
             end
         end else if (com_size_valid) begin
@@ -171,20 +171,20 @@ end
 
 always_comb begin
     for (int i = 0; i < COMP_CORES; i++) begin
-        if (gzip_counter == i) begin
-            axis_gzip.tdata   <= gzip_data_all[i];
-            axis_gzip.tkeep   <= gzip_keep_all[i];
-            axis_gzip.tlast   <= gzip_last_all[i];
-            axis_gzip.tvalid  <= gzip_valid_all[i];
-            gzip_ready_all[i] <= axis_gzip.tready;
+        if (compress_counter == i) begin
+            axis_compress.tdata   <= compress_data_all[i];
+            axis_compress.tkeep   <= compress_keep_all[i];
+            axis_compress.tlast   <= compress_last_all[i];
+            axis_compress.tvalid  <= compress_valid_all[i];
+            compress_ready_all[i] <= axis_compress.tready;
         end else begin 
-            gzip_ready_all[i] <= 0;
+            compress_ready_all[i] <= 0;
         end
     end
 end
 
-assign axis_gzip_keep_ones = $countones(axis_gzip.tkeep);
-assign com_size_succ = com_size + axis_gzip_keep_ones;
+assign axis_compress_keep_ones = $countones(axis_compress.tkeep);
+assign com_size_succ = com_size + axis_compress_keep_ones;
 
 ////
 // Output
