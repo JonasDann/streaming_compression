@@ -31,18 +31,21 @@ module design_user_logic_c0_0 (
 );
 
 /* -- Tie-off unused interfaces and signals ----------------------------- */
-always_comb axi_ctrl.tie_off_s();
-always_comb notify.tie_off_m();
 always_comb sq_rd.tie_off_m();
-always_comb sq_wr.tie_off_m();
 always_comb cq_rd.tie_off_s();
-always_comb cq_wr.tie_off_s();
 
 /* -- USER LOGIC -------------------------------------------------------- */
 
 Top top (
     .aclk(aclk),
     .aresetn(aresetn),
+
+    .axi_ctrl(axi_ctrl),
+
+    .cq_wr(cq_wr),
+    .sq_wr(sq_wr),
+    .notify(notify),
+
     .axis_host_recv(axis_host_recv[0]),
     .axis_host_send(axis_host_send[0])
 );

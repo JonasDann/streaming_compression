@@ -17,6 +17,8 @@ set proj_dir        "$build_dir/$project\_shell"
 # Create project
 create_project $project $sim_dir -part $part -force
 set proj [current_project]
+set_property IP_REPO_PATHS $lib_dir [current_fileset]
+update_ip_catalog
 
 puts "**** Sim created"
 puts "****"
@@ -89,7 +91,7 @@ set files [list \
  [file normalize "$hw_dir/hdl/common/regs/axil_reg_rd.v"] \
  [file normalize "$hw_dir/hdl/common/regs/axil_reg_wr.v"] \
  [file normalize "$hw_dir/hdl/common/regs/meta_reg_rtl.sv"] \
- [file normalize "$parser_dir/src"] \
+ [file normalize "$parser_dir/src/hdl"] \
  [file normalize "$parser_dir/tst"] \
 ]
 add_files -fileset $obj $files
@@ -100,6 +102,11 @@ set_property top_lib xil_defaultlib [get_filesets sim_1]
 
 puts "**** Sim sources set"
 puts "****"
+
+# IP instantiation
+if {[file exists "$parser_dir/src/init_ip.tcl"]} {
+    source "$parser_dir/src/init_ip.tcl"
+}
 
 ########################################################################################################
 # Simulation

@@ -113,6 +113,9 @@ package lynxTypes;
     parameter integer OPCODE_BITS = 5;
     parameter integer STRM_BITS = 2;
 
+    parameter integer LOCAL_READ = 1;
+    parameter integer LOCAL_WRITE = 2;
+
     parameter integer STRM_CARD = 0;
     parameter integer STRM_HOST = 1;
     parameter integer STRM_TCP = 2;

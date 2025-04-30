@@ -218,6 +218,7 @@ module tb_user;
     // AXIL control
     initial begin
         axi_ctrl_drv.reset_m();
+        #(RST_PERIOD) axi_ctrl_drv.write(3 * 8, 256);
     end
     
     // Notify
